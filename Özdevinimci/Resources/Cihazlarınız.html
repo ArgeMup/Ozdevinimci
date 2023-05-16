@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+    <head>
+	    <meta charset="utf-8">
+	    <meta name="viewport" content="width=device-width, initial-scale=1">
+	    <title>?=? Uygulama Adi ?=?</title>
+	    <link rel="icon" type="image/x-icon" href="DoEk/Uygulama.ico">
+	</head>
+    <body>
+        <b>
+            <fieldset> <legend>Cihazlarınız</legend>
+                <div id="HataMesajı"></div>
+                <!-- ?=? Cihaz ve Komutlar ?=? -->
+                <!-- <fieldset> <legend>Kapı  &#127823 &#127822</legend>
+                        <button onclick="Sorgula('Kapı/Aç')">Aç</button>
+                     </fieldset> -->
+            </fieldset>
+        </b>
+    </body>
+</html>
+
+<style>
+    legend {
+        padding: 2mm;
+        font-size: 5mm;
+        }
+    button {
+        margin: 2mm;
+        padding: 2mm;
+        border-width: 1mm;
+        font-size: 10mm;
+        }  
+</style>
+
+<script>
+    async function Sorgula(Sayfa) {
+        const response = await fetch('Komut/' + Sayfa, { method: 'post' });
+        response.text().then(function (text) {
+            let dcm = document.getElementById('HataMesajı');
+            dcm.innerText = text;
+        });
+    }
+</script>
