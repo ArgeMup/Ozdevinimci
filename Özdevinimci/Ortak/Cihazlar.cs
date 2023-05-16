@@ -7,7 +7,8 @@ using System.Net.Sockets;
 using ArgeMup.HazirKod.Ekİşlemler;
 using ArgeMup.HazirKod;
 using System.Linq;
-using static ArgeMup.HazirKod.Depo_Xml;
+using ArgeMup.HazirKod.ArkaPlan;
+using System.Threading;
 
 namespace Özdevinimci
 {
@@ -32,9 +33,9 @@ namespace Özdevinimci
 
         public static string Çalıştır(string Cihaz, string Komut)
         {
-            if (Cihazlar.Tümü_Çalışma == null || Cihazlar.Tümü_Çalışma.Length < 1) return "Henüz hiç cihaz bulunamadı";
+            if (Cihazlar.Tümü == null || Cihazlar.Tümü.Length < 1) return "Henüz hiç cihaz bulunamadı";
 
-            BirCihaz_ chz = Cihazlar.Tümü_Çalışma.FirstOrDefault(x => x.Adı == Cihaz);
+            BirCihaz_ chz = Cihazlar.Tümü.FirstOrDefault(x => x.Adı == Cihaz);
             if (chz == null) return "Cihaz bulunamadı " + Cihaz;
 
             return chz.Çalıştır(Komut);
@@ -43,11 +44,48 @@ namespace Özdevinimci
 
     public static class Cihazlar
     {
-        public static BirCihaz_[] Tümü_Tarama = null, Tümü_Çalışma = null;
-
-        public static void Listele_Adresleri()
+        public static BirCihaz_[] Tümü = null;
+        public static void TümCihazlarıListele()
         {
-            List<BirCihaz_> liste = new List<BirCihaz_>();
+            Tümü = new BirCihaz_[Ortak.Ayarlar["Cihazlar"].Elemanları.Length];
+            for (int c = 0; c < Tümü.Length; c++)
+            {
+                IDepo_Eleman chz = Ortak.Ayarlar["Cihazlar"].Elemanları[c];
+                Tümü[c] = new BirCihaz_()
+                {
+                    Adı = chz.Adı,
+                    Türü = Cihaz.Türü.Sonoff_BasicR3_DIYMode,
+                    KapatıldıktanSonraTekrarAçılabilmesiİçinGerekenSüre_sn = chz.Oku_TamSayı(null, 0, 2),
+                    Komutlar = new BirCihaz_BirKomut_[chz.Elemanları.Length]
+                };
+             
+                for (int k = 0; k < Tümü[c].Komutlar.Length; k++)
+                {
+                    IDepo_Eleman kmt = chz.Elemanları[k];
+                    Tümü[c].Komutlar[k] = new BirCihaz_BirKomut_()
+                    {
+                        Adı = kmt.Adı,
+                        Türü = kmt[0] == "Aç" ? Cihaz.KomutTürü.Aç : Cihaz.KomutTürü.Kapat,
+                        AçıkKalmaSüresi_Sn = kmt.Oku_TamSayı(null, 15, 1)
+                    };
+                }
+            }
+        }
+        public static void Durdur()
+        {
+            if (Tümü == null) return;
+
+            foreach (BirCihaz_ chz in Tümü)
+            {
+                chz.Durdur();
+            }
+        }
+
+        public static bool Tarama_Bitti;
+        public static void TaramayıBaşlat()
+        {
+            Tarama_Bitti = false;
+            Günlük.Ekle("Tarama başlatılıyor");
 
             Task.Run(async () =>
             {
@@ -89,36 +127,30 @@ namespace Özdevinimci
                             continue;
                         }
 
-                        string cvp = biri.Result.Cihaz.İlkAçılışİşlemlerl();
-                        if (cvp.DoluMu()) Günlük.Ekle(chz_ayrlr.Adı + " İlkAçılışİşlemlerl hatalı " + cvp);
-
-                        if (chz_ayrlr.Elemanları.Length < 1)
+                        BirCihaz_ Çalışanlar_içindeki_cihaz = Tümü.FirstOrDefault(x => x.Adı == chz_ayrlr.Adı);
+                        if (Çalışanlar_içindeki_cihaz == null)
                         {
-                            Günlük.Ekle(chz_ayrlr.Adı + " cihazı için hiç komut tanımlanmadığından atlandı");
+                            Günlük.Ekle(chz_ayrlr.Adı + " Beklenmeyen durum, ayarlar içindeki cihaz çalışanlar içine kaydedilmemiş");
                             continue;
                         }
 
-                        biri.Result.Cihaz.Türü = Cihaz.Türü.Sonoff_BasicR3_DIYMode;
-                        biri.Result.Cihaz.Adı = chz_ayrlr.Adı;
-                        biri.Result.Cihaz.Komutlar = new BirCihaz_BirKomut_[chz_ayrlr.Elemanları.Length];
-                     
-                        for (int i = 0; i < biri.Result.Cihaz.Komutlar.Length; i++)
+                        if (Çalışanlar_içindeki_cihaz.Adresi != null) continue; //zaten alındı
+
+                        string cvp = biri.Result.Cihaz.İlkAçılışİşlemlerl();
+                        if (cvp.DoluMu())
                         {
-                            IDepo_Eleman kmt_ayrlr = chz_ayrlr.Elemanları[i];
-                            biri.Result.Cihaz.Komutlar[i] = new BirCihaz_BirKomut_()
-                            {
-                                Adı = kmt_ayrlr.Adı,
-                                Türü = kmt_ayrlr[0] == "Aç" ? Cihaz.KomutTürü.Aç : Cihaz.KomutTürü.Kapat,
-                                AçıkKalmaSüresi_Sn = kmt_ayrlr.Oku_TamSayı(null, 5, 1)
-                            };
+                            Günlük.Ekle(chz_ayrlr.Adı + " İlkAçılışİşlemlerl hatalı " + cvp);
+                            continue;
                         }
 
-                        liste.Add(biri.Result.Cihaz);
+                        Çalışanlar_içindeki_cihaz.Detaylar = biri.Result.Cihaz.Detaylar;
+                        Çalışanlar_içindeki_cihaz.Adresi = biri.Result.Cihaz.Adresi;
+                        Günlük.Ekle(Çalışanlar_içindeki_cihaz.Adı + " cihazı faal");
                     }
                 }
             }).ContinueWith((t) =>
             {
-                Tümü_Tarama = liste.ToArray();
+                Tarama_Bitti = true;
             });
         }
 
@@ -142,6 +174,7 @@ namespace Özdevinimci
                     ", sürümü " + Detaylar.Cihaz.Detaylar.Sürümü + 
                     ", rssi " + Detaylar.Cihaz.Detaylar.Sinyal_Seviyesi + 
                     ", durumu " + Detaylar.Cihaz.Detaylar.Durumu +
+                    ", adresi " + Adres.ToString() +
                     ", AçıkKalmaSüresi_sn " + Detaylar.Cihaz.Detaylar.AçıkKalmaSüresi_sn +
                     ", KapalıOlarakAçılsın " + Detaylar.Cihaz.Detaylar.KapalıOlarakAçılsın +
                     ", KendiliğindenKapanır " + Detaylar.Cihaz.Detaylar.KendiliğindenKapanır);
@@ -159,6 +192,9 @@ namespace Özdevinimci
 
         public Cihaz.Sonoff.Bilgi Detaylar;
         public DateTime TekrarKurularakUzatılanKapanmaZamanı;
+        
+        public DateTime TekrarAçılabileceğiZaman;
+        public int KapatıldıktanSonraTekrarAçılabilmesiİçinGerekenSüre_sn;
 
         public BirCihaz_BirKomut_[] Komutlar;
 
@@ -176,6 +212,8 @@ namespace Özdevinimci
             if (kmt.Türü == Cihaz.KomutTürü.Aç && Detaylar.Durumu == Cihaz.Durumu.Açık) return null;
             else if (kmt.Türü == Cihaz.KomutTürü.Kapat)
             {
+                TekrarAçılabileceğiZaman = DateTime.MinValue;
+
                 if (Detaylar.Durumu == Cihaz.Durumu.Kapalı) return null;
                 else
                 {
@@ -188,6 +226,10 @@ namespace Özdevinimci
             }
 
             //Açmak için gerekli koşulları yerine getir
+            TimeSpan ts = TekrarAçılabileceğiZaman - DateTime.Now;
+            Console.WriteLine(ts.ToString());
+            if (ts.TotalMilliseconds > 0) return "Lütfen bekleyiniz " + Ortak.ZamanAşımıAnı_Yazıya(ts);
+
             string sorgu_kendiliğinden_kapanma = Cihaz.Sonoff.KendiliğindenKapanma.Sorgu(kmt.AçıkKalmaSüresi_Sn, out int KontrolEdilmişDeğer_sn);
             if (!Detaylar.KendiliğindenKapanır || Detaylar.AçıkKalmaSüresi_sn != KontrolEdilmişDeğer_sn)
             {
@@ -205,7 +247,8 @@ namespace Özdevinimci
 
             //Aç
             TekrarKurularakUzatılanKapanmaZamanı = DateTime.Now.AddSeconds(kmt.AçıkKalmaSüresi_Sn);
-            Ortak.Görevler.Kur("Cihaz " + Adı, DateTime.Now, null, Görev_Açık, Kendi_İstekNo);
+            TekrarAçılabileceğiZaman = TekrarKurularakUzatılanKapanmaZamanı.AddSeconds(KapatıldıktanSonraTekrarAçılabilmesiİçinGerekenSüre_sn);
+            Ortak.Görevler.Kur("Cihaz " + Adı, DateTime.Now.AddMilliseconds(5), null, Görev_Açık, Kendi_İstekNo);
 
             return null;
         }
@@ -225,13 +268,23 @@ namespace Özdevinimci
             string Cevap = AçKapat(İstekNo, false);
             if (Cevap.DoluMu()) return Cevap;
 
-            Cevap = Sorgula(Cihaz.Sonoff.KapalıOlarakAçılma.Sayfa, Cihaz.Sonoff.KapalıOlarakAçılma.Sorgu);
-            if (Cevap.BoşMu()) return "Bağlantı kurulamadı - KapalıOlarakAçılma";
+            Cevap = Bilgi(İstekNo);
+            if (Cevap.DoluMu()) return Cevap;
 
-            Cihaz.Sonoff.KapalıOlarakAçılma Detaylar = new Cihaz.Sonoff.KapalıOlarakAçılma(Cevap);
-            if (!Detaylar.Ayıklandı) return "Sorgu cevabı ayıklanamadı - KapalıOlarakAçılma - " + Cevap;
+            if (!Detaylar.KapalıOlarakAçılsın)
+            {
+                Cevap = Sorgula(Cihaz.Sonoff.KapalıOlarakAçılma.Sayfa, Cihaz.Sonoff.KapalıOlarakAçılma.Sorgu);
+                if (Cevap.BoşMu()) return "Bağlantı kurulamadı - KapalıOlarakAçılma";
 
+                Cihaz.Sonoff.KapalıOlarakAçılma Detaylar_ = new Cihaz.Sonoff.KapalıOlarakAçılma(Cevap);
+                if (!Detaylar_.Ayıklandı) return "Sorgu cevabı ayıklanamadı - KapalıOlarakAçılma - " + Cevap;
+            }
+            
             return null;
+        }
+        public void Durdur()
+        {
+            AçKapat(İstekNo, false);
         }
         string AçKapat(int Kendi_İstekNo, bool Aç)
         {
@@ -247,6 +300,9 @@ namespace Özdevinimci
         }
         string Sorgula(string Sayfa, string Sorgu)
         {
+            if (Adresi == null) return null;
+
+            Exception son_hata = null;
             for (int i = 0; i < 3; i++)
             {
                 try
@@ -312,16 +368,21 @@ namespace Özdevinimci
                         }
                     }
                 }
-                catch (Exception ex) { ex.Günlük(); }
+                catch (Exception ex) { son_hata = ex; }
 
                 Task.Delay(150).Wait();
             }
-            
+
+            son_hata?.Günlük();
             return null;
         }
         int Görev_Açık(string TakmaAdı, object Hatırlatıcı) //Kendi_İstekNo
         {
-            if ((int)Hatırlatıcı != İstekNo) return -1; //yeni komut bu görevi iptal etti
+            if ((int)Hatırlatıcı != İstekNo)
+            {
+                Console.WriteLine("yeni komut bu görevi iptal etti");
+                return -1; //yeni komut bu görevi iptal etti
+            }
 
             string Cevap;
             TimeSpan ts = TekrarKurularakUzatılanKapanmaZamanı - DateTime.Now;

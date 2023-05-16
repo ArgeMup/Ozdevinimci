@@ -12,6 +12,6 @@ Genel amaçlı, web api kullanan cihazlar için http sayfası üzerinden özdevi
             Http Sunucu / <Erişim Noktası <= 0 ise kapalı>>
             Bilgisayarı Kapat / <Saat> / Dakika (Uyarı mesajı çıkar ve +5dk sonra kapanır)
         Cihazlar
-            <Cihaz Adı> / <Türü - Sonoff_BasicR3_DIYMode> / <Seri No - Tanımlayıcı>
+            <Cihaz Adı> / Sonoff_BasicR3_DIYMode / <Seri No - Tanımlayıcı> / <Kapatıldıktan sonra tekrar açılabilmesi için gereken süre - sn> 
                 <Komut Adı> / Aç / <Rölenin açık kalma süresi - 1 ile 43600 sn arasında>
                 <Komut Adı> / Kapat

@@ -36,6 +36,13 @@ namespace Özdevinimci
         {
             public static int Sıradakiİşlem = 0;
         }
+    
+        public static string ZamanAşımıAnı_Yazıya(TimeSpan ts)
+        {
+            string süre = ts.Hours.ToString() + ":" + ts.Minutes.ToString("00") + ":" + ts.Seconds.ToString("00");
+            while (süre.DoluMu() && (süre[0] == '0' || süre[0] == ':')) süre = süre.Substring(1);
+            return süre;
+        }
     }
 
     public static class AğAraçları

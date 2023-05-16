@@ -71,9 +71,9 @@ namespace Özdevinimci
                     else
                     {
                         string CihazVeKomutlar = null;
-                        if (Cihazlar.Tümü_Çalışma != null)
+                        if (Cihazlar.Tümü != null)
                         {
-                            foreach (BirCihaz_ chz in Cihazlar.Tümü_Çalışma)
+                            foreach (BirCihaz_ chz in Cihazlar.Tümü)
                             {
                                 /*
                                 <fieldset> <legend>Kapı  &#127823 &#127822</legend>
@@ -81,7 +81,23 @@ namespace Özdevinimci
                                 </fieldset>
                                  */
 
-                                CihazVeKomutlar += @"<fieldset> <legend>" + chz.Adı + (chz.Detaylar.Durumu == Cihaz.Durumu.Açık ? " &#127823" : " &#127822") + @"</legend>";
+                                if (chz.Adresi == null)
+                                {
+                                    //henüz iletişim kurulmadı
+                                    CihazVeKomutlar += @"<fieldset> <legend>" + chz.Adı + @"</legend>";
+                                }
+                                else
+                                {
+                                    //mevcut faal cihaz
+                                    if (chz.Detaylar.Durumu == Cihaz.Durumu.Açık)
+                                    {
+                                        CihazVeKomutlar += @"<fieldset> <legend>" + chz.Adı + " &#127823 " + Ortak.ZamanAşımıAnı_Yazıya(chz.TekrarKurularakUzatılanKapanmaZamanı - DateTime.Now) + @"</legend>";
+                                    }
+                                    else
+                                    {
+                                        CihazVeKomutlar += @"<fieldset> <legend>" + chz.Adı + " &#127822</legend>";
+                                    }
+                                }
 
                                 foreach (BirCihaz_BirKomut_ kmt in chz.Komutlar)
                                 {
@@ -93,7 +109,7 @@ namespace Özdevinimci
                         }
 
                         string SayfaCevabı = Properties.Resources.Cihazlarınız;
-                        SayfaCevabı = SayfaCevabı.Replace("?=? Uygulama Adi ?=?", Sayfa_İçeriği[0] + " / " + SayfaBaşlığı);
+                        SayfaCevabı = SayfaCevabı.Replace("?=? Uygulama Adi ?=?", SayfaBaşlığı);
                         SayfaCevabı = SayfaCevabı.Replace("<!-- ?=? Cihaz ve Komutlar ?=? -->", CihazVeKomutlar);
 
                         Gönderilecek_İçerik = SayfaCevabı.BaytDizisine();

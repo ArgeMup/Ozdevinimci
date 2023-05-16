@@ -2,6 +2,7 @@
 using ArgeMup.HazirKod.Ekİşlemler;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace Özdevinimci
@@ -18,9 +19,39 @@ namespace Özdevinimci
             Gösterge.Icon = Properties.Resources.mavi;
             Gösterge.Text = Kendi.Adı + " V" + Kendi.Sürümü_Dosya;
 
-            Ortak.Görevler.Kur("Bilgisayarı Kapat", DateTime.Now, null, Görev_BilgisayarıKapat);
-            Ortak.Görevler.Kur("Cihazlar", DateTime.Now, null, Görev_Cihazlar);
+            _Menü_ertele_0.Tag = 0;
+            _Menü_ertele_5.Tag = 5;
+            _Menü_ertele_30.Tag = 30;
+            _Menü_ertele_60.Tag = 60;
+            _Menü_ertele_120.Tag = 120;
+
+            Cihazlar.TümCihazlarıListele();
+            for (int c = Cihazlar.Tümü.Length - 1; c >= 0 ; c--)
+            {
+                ToolStripMenuItem tsmi = new ToolStripMenuItem();
+                tsmi.Text = Cihazlar.Tümü[c].Adı;
+                SağTuşMenü.Items.Insert(0, tsmi);
+
+                for (int k = 0; k < Cihazlar.Tümü[c].Komutlar.Length; k++)
+                {
+                    ToolStripMenuItem tsmi_k = new ToolStripMenuItem();
+                    tsmi_k.Text = Cihazlar.Tümü[c].Komutlar[k].Adı;
+                    tsmi_k.Click += _Menü_cihaz_komut_Click;
+                    tsmi.DropDownItems.Add(tsmi_k);
+                }
+            }
+
+            Ortak.Görevler.Kur("Bilgisayarı Kapat", DateTime.Now.AddSeconds(2), null, Görev_BilgisayarıKapat);
+            Ortak.Görevler.Kur("Cihazlar", DateTime.Now.AddSeconds(1), null, Görev_Cihazlar);
             HttpSunucu.Başlat();
+        }
+        private void _Menü_cihaz_komut_Click(object sender, EventArgs e)
+        {
+            string cihaz = (sender as ToolStripMenuItem).OwnerItem.Text;
+            string komut = (sender as ToolStripMenuItem).Text;
+
+            string cevap = Cihaz.Çalıştır(cihaz, komut);
+            if (cevap.DoluMu()) MessageBox.Show(cevap, Text);
         }
 
         int Görev_BilgisayarıKapat(string TakmaAdı, object Hatırlatıcı)
@@ -28,23 +59,26 @@ namespace Özdevinimci
             switch (Ortak.BilgisayarıKapat.Sıradakiİşlem)
             {
                 case 0:
-                    if (Ortak.Ayarlar.Oku("Bilgisayarı Kapat").BoşMu()) return -1;
+                    IDepo_Eleman ayrl = Ortak.Ayarlar["Genel/Bilgisayarı Kapat"];
+                    if (ayrl.Oku(null).BoşMu()) return -1;
 
                     Ortak.BilgisayarıKapat.Zamanı = DateTime.Now;
                     Ortak.BilgisayarıKapat.Zamanı = new DateTime(
                         Ortak.BilgisayarıKapat.Zamanı.Year,
                         Ortak.BilgisayarıKapat.Zamanı.Month,
                         Ortak.BilgisayarıKapat.Zamanı.Day,
-                        Ortak.Ayarlar.Oku_TamSayı("Bilgisayarı Kapat", 23, 0),
-                        Ortak.Ayarlar.Oku_TamSayı("Bilgisayarı Kapat", 59, 1), 0);
+                        ayrl.Oku_TamSayı(null, 23, 0),
+                        ayrl.Oku_TamSayı(null, 59, 1), 0);
                     Ortak.BilgisayarıKapat.Sıradakiİşlem++;
                     return 1000;
 
                 case 1:
-                    double kalan_sn = (Ortak.BilgisayarıKapat.Zamanı - DateTime.Now).TotalSeconds;
-                    if (kalan_sn > 0) return (int)(kalan_sn / 2);
+                    double kalan_msn = (Ortak.BilgisayarıKapat.Zamanı - DateTime.Now).TotalMilliseconds;
+                    if (kalan_msn > 0) return (int)(kalan_msn / 2);
 
                     //süre doldu, 5 dk sonrasına kur
+                    Ortak.BilgisayarıKapat.Zamanı = DateTime.Now.AddMinutes(5);
+                    Ortak.BilgisayarıKapat.Kapat(0);
                     Ortak.BilgisayarıKapat.Kapat(300);
 
                     DialogResult Dr = MessageBox.Show("Bilgisayarınız " + Ortak.BilgisayarıKapat.Zamanı.Yazıya() + " zamanı geldiğinde kapatılacak." + Environment.NewLine +
@@ -54,8 +88,10 @@ namespace Özdevinimci
                         "İptal : Bilgisayarı kapatmayı iptal et", "Bilgisayar Kapatılacak", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
                     if (Dr == DialogResult.Yes)
                     {
+                        Ortak.BilgisayarıKapat.Zamanı = DateTime.Now.AddHours(1);
+                        Ortak.BilgisayarıKapat.Kapat(0);
                         Ortak.BilgisayarıKapat.Kapat(60 * 60); //1 saat
-                        return 60;
+                        return 60000;
                     }
                     else if (Dr == DialogResult.Cancel)
                     {
@@ -73,65 +109,23 @@ namespace Özdevinimci
             switch (Ortak.Cihazlar.Sıradakiİşlem)
             {
                 case 0:
-                    Cihazlar.Tümü_Tarama = null;
-                    Cihazlar.Listele_Adresleri();
+                    Cihazlar.TaramayıBaşlat();
                     Ortak.Cihazlar.Sıradakiİşlem++;
                     break;
-
+                    
                 case 1:
-                    if (Cihazlar.Tümü_Tarama != null)
+                    if (Cihazlar.Tarama_Bitti)
                     {
-                        if (Cihazlar.Tümü_Tarama.Length < 1)
+                        BirCihaz_ başlatılamayan = Cihazlar.Tümü.FirstOrDefault(x => x.Adresi == null);
+                        if (başlatılamayan == null)
                         {
-                            //hiç cihaz bulunamadı
-                            if (Ortak.Ayarlar["Cihazlar"].Elemanları.Length > 0)
-                            {
-                                //kayıtlı cihazlar bulunamadı, yeniden dene
-                                Ortak.Cihazlar.Sıradakiİşlem = 0;
-                                return 60000;
-                            }
-                            else
-                            {
-                                //hiç kayıtlı cihaz yok, mekanizmayı kapat
-                                return -1;
-                            }
+                            //tüm cihazlar tespit edildi
+                            return -1;
                         }
-                        else
-                        {
-                            List<BirCihaz_> bulunan_chz_ler = new List<BirCihaz_>();
-                            foreach (BirCihaz_ chz in Cihazlar.Tümü_Tarama)
-                            {
-                                IDepo_Eleman chz_ayrlr = Ortak.Ayarlar["Cihazlar/" + chz.Adı];
-                                if (chz_ayrlr != null)
-                                {
-                                    //bulunan cihazı ayarlar listesinden silerek tekrar bulunmasını engelle
-                                    bulunan_chz_ler.Add(chz);
-                                    chz_ayrlr.Sil(null);
-                                }
-                            }
 
-                            if (bulunan_chz_ler.Count > 0)
-                            {
-                                if (Cihazlar.Tümü_Çalışma != null)
-                                {
-                                    bulunan_chz_ler.AddRange(Cihazlar.Tümü_Çalışma);
-                                }
-                                Cihazlar.Tümü_Çalışma = bulunan_chz_ler.ToArray();
-                            }
-
-                            Ortak.Ayarlar.YazıyaDönüştür(); //eklenen cihazların silinmesi için
-                            if (Ortak.Ayarlar["Cihazlar"].Elemanları.Length < 1)
-                            {
-                                //tüm cihazlar faal, bu görev gereksiz
-                                return -1;
-                            }
-                            else
-                            {
-                                //eksik kalan cihazlar için taramaya devam
-                                Ortak.Cihazlar.Sıradakiİşlem = 0;
-                                return 60000;
-                            }
-                        }
+                        //kayıtlı cihazlar bulunamadı veya eksik, yeniden dene
+                        Ortak.Cihazlar.Sıradakiİşlem = 0;
+                        return 60000;
                     }
                     break;
 
@@ -161,7 +155,20 @@ namespace Özdevinimci
         private void AnaEkran_FormClosed(object sender, FormClosedEventArgs e)
         {
             Günlük.Ekle(e.CloseReason.ToString());
+            Cihazlar.Durdur();
+            HttpSunucu.Bitir();
+
             ArgeMup.HazirKod.ArkaPlan.Ortak.Çalışsın = false;
+        }
+
+        private void _Menü_ertele_x_Click(object sender, EventArgs e)
+        {
+            Ortak.Görevler.Sil("Bilgisayarı Kapat");
+
+            int za_dk = (int)(sender as ToolStripMenuItem).Tag;
+            Ortak.BilgisayarıKapat.Kapat(0);
+
+            if (za_dk > 0) Ortak.BilgisayarıKapat.Kapat(za_dk * 60);
         }
     }
 }
