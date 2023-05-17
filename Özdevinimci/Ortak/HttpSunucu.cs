@@ -14,6 +14,7 @@ namespace Özdevinimci
         static TcpSunucu_ Sunucu = null;
         static IDonanımHaberlleşmesi Sunucu_DoHa = null;
         static byte[] Uygulama_ico;
+        static string SayfaBaşlığı = "ArGeMuP " + Kendi.Adı + " " + Kendi.Sürüm;
 
         public static void Başlat()
         {
@@ -29,7 +30,7 @@ namespace Özdevinimci
             Sunucu = new TcpSunucu_(ErişimNoktası, GeriBildirim_Islemi, SatırSatırGönderVeAl:false, SadeceYerel: false, Sessizlik_ZamanAşımı_msn:15000);
             Sunucu_DoHa = Sunucu;
         }
-        public static void Bitir()
+        public static void Durdur()
         {
             Sunucu?.Dispose();
             Sunucu = null;
@@ -43,7 +44,6 @@ namespace Özdevinimci
                 string[] istek = ((byte[])İçerik).Yazıya().Split('\n');
                 string[] Sayfa_İçeriği = AğAraçları.WebAdresinden_Yazıya(istek[0].Trim(' ', '\r').Split(' ')[1]).Trim('/').Split('/');
                 byte[] Gönderilecek_İçerik, Gönderilecek_Sayfa;
-                string SayfaBaşlığı = "ArGeMuP " + Kendi.Adı + " " + Kendi.Sürüm;
 
                 if (Sayfa_İçeriği[0] == "DoEk")
                 {
@@ -62,58 +62,18 @@ namespace Özdevinimci
                 }
                 else
                 {
-                    if (Sayfa_İçeriği[0] == "Komut" && Sayfa_İçeriği.Length == 3)
+                    if (Sayfa_İçeriği[0] == "Komut" && Sayfa_İçeriği.Length >= 3)
                     {
                         Sayfa_İçeriği[0] = Cihaz.Çalıştır(Sayfa_İçeriği[1], Sayfa_İçeriği[2]);
-                        if (Sayfa_İçeriği[0].DoluMu()) Gönderilecek_İçerik = Sayfa_İçeriği[0].Replace(Environment.NewLine, "<br>").BaytDizisine();
-                        else Gönderilecek_İçerik = new byte[0];
-                    }
-                    else
-                    {
-                        string CihazVeKomutlar = null;
-                        if (Cihazlar.Tümü != null)
+                        if (Sayfa_İçeriği[0].DoluMu()) Gönderilecek_İçerik = Sayfa_İçeriği[0].Replace(Environment.NewLine, "<br>").BaytDizisine(); //Hata
+                        else
                         {
-                            foreach (BirCihaz_ chz in Cihazlar.Tümü)
-                            {
-                                /*
-                                <fieldset> <legend>Kapı  &#127823 &#127822</legend>
-                                    <button onclick="Sorgula('Kapı/Aç')">Aç</button>
-                                </fieldset>
-                                 */
-
-                                if (chz.Adresi == null)
-                                {
-                                    //henüz iletişim kurulmadı
-                                    CihazVeKomutlar += @"<fieldset> <legend>" + chz.Adı + @"</legend>";
-                                }
-                                else
-                                {
-                                    //mevcut faal cihaz
-                                    if (chz.Detaylar.Durumu == Cihaz.Durumu.Açık)
-                                    {
-                                        CihazVeKomutlar += @"<fieldset> <legend>" + chz.Adı + " &#127823 " + Ortak.ZamanAşımıAnı_Yazıya(chz.TekrarKurularakUzatılanKapanmaZamanı - DateTime.Now) + @"</legend>";
-                                    }
-                                    else
-                                    {
-                                        CihazVeKomutlar += @"<fieldset> <legend>" + chz.Adı + " &#127822</legend>";
-                                    }
-                                }
-
-                                foreach (BirCihaz_BirKomut_ kmt in chz.Komutlar)
-                                {
-                                    CihazVeKomutlar += @"<button onclick=""Sorgula('" + chz.Adı + "/" + kmt.Adı + @"')"">" + kmt.Adı + @"</button>";
-                                }
-
-                                CihazVeKomutlar += @"</fieldset>";
-                            }
+                            //başarılı
+                            if (Sayfa_İçeriği.Length > 3) Gönderilecek_İçerik = _AnaSayfa_();
+                            else Gönderilecek_İçerik = "Tamam".BaytDizisine();
                         }
-
-                        string SayfaCevabı = Properties.Resources.Cihazlarınız;
-                        SayfaCevabı = SayfaCevabı.Replace("?=? Uygulama Adi ?=?", SayfaBaşlığı);
-                        SayfaCevabı = SayfaCevabı.Replace("<!-- ?=? Cihaz ve Komutlar ?=? -->", CihazVeKomutlar);
-
-                        Gönderilecek_İçerik = SayfaCevabı.BaytDizisine();
                     }
+                    else Gönderilecek_İçerik = _AnaSayfa_();
                     
                     Gönderilecek_Sayfa = (
                             "HTTP/1.1 200 OK" + Environment.NewLine +
@@ -132,6 +92,45 @@ namespace Özdevinimci
 
             Hata:
             Sunucu.Durdur(Kaynak); 
+        }
+
+        static byte[] _AnaSayfa_()
+        {
+            string CihazVeKomutlar = null, Zamanlama = null;
+            if (Cihazlar.Tümü != null)
+            {
+                //const Zamanlama = [ ["Kapı", new Date("2023.05.18 02:01:00")], ["Pencere", new Date("2023.05.17 02:02:00")] ];
+                Zamanlama = "const Zamanlama=[";
+
+                foreach (BirCihaz_ chz in Cihazlar.Tümü)
+                {
+                    /*
+                    <fieldset> <legend id="Kapı">Kapı  &#127823 &#127822</legend>
+                        <button onclick="Sorgula('Kapı', 'Aç', 10)">Aç</button>
+                     </fieldset>
+                     */
+
+                    CihazVeKomutlar += @"<fieldset><legend id=""" + chz.Adı + @""">" + chz.Adı + @"</legend>";
+                    foreach (BirCihaz_BirKomut_ kmt in chz.Komutlar)
+                    {
+                        CihazVeKomutlar += @"<button onclick=""Sorgula('" + chz.Adı + "','" + kmt.Adı + @"'," + (kmt.Türü == Cihaz.KomutTürü.Aç ? kmt.AçıkKalmaSüresi_Sn : 0) + @")"">" + kmt.Adı + @"</button>";
+                    }
+                    CihazVeKomutlar += @"</fieldset>";
+
+                    //["Kapı", new Date("2023.05.18 02:01:00")],
+                    DateTime z = chz.TekrarKurularakUzatılanKapanmaZamanı;
+                    Zamanlama += @"[""" + chz.Adı + @""", new Date(""" + z.Year + "." + z.Month + "." + z.Day + " " + z.Hour + ":" + z.Minute + ":" + z.Second + @""")],";
+                }
+
+                Zamanlama += "];";
+            }
+
+            string SayfaCevabı = Properties.Resources.Cihazlarınız;
+            SayfaCevabı = SayfaCevabı.Replace("?=? Uygulama Adi ?=?", SayfaBaşlığı);
+            SayfaCevabı = SayfaCevabı.Replace("<!-- ?=? Cihaz ve Komutlar ?=? -->", CihazVeKomutlar);
+            SayfaCevabı = SayfaCevabı.Replace("<!-- ?=? Zamanlama ?=? -->", Zamanlama);
+
+            return SayfaCevabı.BaytDizisine();
         }
 
         #region Seri Nolu İstek

@@ -1,7 +1,6 @@
 ﻿using ArgeMup.HazirKod;
 using ArgeMup.HazirKod.Ekİşlemler;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 
@@ -9,6 +8,8 @@ namespace Özdevinimci
 {
     public partial class AnaEkran : Form
     {
+        YeniYazılımKontrolü_ YeniYazılımKontrolü = new YeniYazılımKontrolü_();
+
         public AnaEkran()
         {
             Günlük.Başlat(TümDosyaların_KapladığıAlan_bayt: 5 * 1024 * 2014/*5MB*/);
@@ -44,6 +45,10 @@ namespace Özdevinimci
             Ortak.Görevler.Kur("Bilgisayarı Kapat", DateTime.Now.AddSeconds(2), null, Görev_BilgisayarıKapat);
             Ortak.Görevler.Kur("Cihazlar", DateTime.Now.AddSeconds(1), null, Görev_Cihazlar);
             HttpSunucu.Başlat();
+
+            #if !DEBUG
+                YeniYazılımKontrolü.Başlat(new Uri("https://github.com/ArgeMup/Ozdevinimci/blob/main/Özdevinimci/bin/Release/Özdevinimci.exe?raw=true"));
+            #endif
         }
         private void _Menü_cihaz_komut_Click(object sender, EventArgs e)
         {
@@ -104,7 +109,7 @@ namespace Özdevinimci
                     return -1;
             }
         }
-        int Görev_Cihazlar(string TakmaAdı, object Hatırlatıcı)
+        public static int Görev_Cihazlar(string TakmaAdı, object Hatırlatıcı)
         {
             switch (Ortak.Cihazlar.Sıradakiİşlem)
             {
@@ -155,8 +160,10 @@ namespace Özdevinimci
         private void AnaEkran_FormClosed(object sender, FormClosedEventArgs e)
         {
             Günlük.Ekle(e.CloseReason.ToString());
+            
             Cihazlar.Durdur();
-            HttpSunucu.Bitir();
+            HttpSunucu.Durdur();
+            YeniYazılımKontrolü.Durdur();
 
             ArgeMup.HazirKod.ArkaPlan.Ortak.Çalışsın = false;
         }

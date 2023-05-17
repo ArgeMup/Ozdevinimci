@@ -207,7 +207,20 @@ namespace Özdevinimci
             if (kmt == null) return "Komut bulunamadı " + Komut;
 
             string Cevap = Cevap = Bilgi(Kendi_İstekNo);
-            if (Cevap.DoluMu()) return Cevap;
+            if (Cevap.DoluMu())
+            {
+                Günlük.Ekle("Cevap alınamadığından silindi " + Adı + " " + Cevap);
+                Adresi = null;
+
+                Hatırlatıcı_.Durum_ drm = Ortak.Görevler.Bul("Cihazlar");
+                if (drm == null || !drm.TetiklenmesiBekleniyor)
+                {
+                    Ortak.Cihazlar.Sıradakiİşlem = 0;
+                    Ortak.Görevler.Sil("Cihazlar");
+                    Ortak.Görevler.Kur("Cihazlar", DateTime.Now.AddSeconds(1), null, AnaEkran.Görev_Cihazlar);
+                }
+                return Cevap;
+            }
 
             if (kmt.Türü == Cihaz.KomutTürü.Aç && Detaylar.Durumu == Cihaz.Durumu.Açık) return null;
             else if (kmt.Türü == Cihaz.KomutTürü.Kapat)
@@ -227,7 +240,6 @@ namespace Özdevinimci
 
             //Açmak için gerekli koşulları yerine getir
             TimeSpan ts = TekrarAçılabileceğiZaman - DateTime.Now;
-            Console.WriteLine(ts.ToString());
             if (ts.TotalMilliseconds > 0) return "Lütfen bekleyiniz " + Ortak.ZamanAşımıAnı_Yazıya(ts);
 
             string sorgu_kendiliğinden_kapanma = Cihaz.Sonoff.KendiliğindenKapanma.Sorgu(kmt.AçıkKalmaSüresi_Sn, out int KontrolEdilmişDeğer_sn);
@@ -311,7 +323,11 @@ namespace Özdevinimci
                     {
                         İstemci.ReceiveTimeout = Cihaz.EnBüyükİletişiZamanAşımı;
                         İstemci.SendTimeout = Cihaz.EnBüyükİletişiZamanAşımı / 2;
-                        İstemci.Connect(Adresi, Cihaz.Sonoff.ErişimNoktası);
+                        if (!İstemci.ConnectAsync(Adresi, Cihaz.Sonoff.ErişimNoktası).Wait(5000))
+                        {
+                            İstemci.Close();
+                            return null;
+                        }
 
                         /*
                         POST SAYFA HTTP/1.1
@@ -370,7 +386,7 @@ namespace Özdevinimci
                 }
                 catch (Exception ex) { son_hata = ex; }
 
-                Task.Delay(150).Wait();
+                Task.Delay(350).Wait();
             }
 
             son_hata?.Günlük();

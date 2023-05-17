@@ -11,8 +11,8 @@
             <fieldset> <legend>Cihazlarınız</legend>
                 <div id="HataMesajı"></div>
                 <!-- ?=? Cihaz ve Komutlar ?=? -->
-                <!-- <fieldset> <legend>Kapı  &#127823 &#127822</legend>
-                        <button onclick="Sorgula('Kapı/Aç')">Aç</button>
+                <!-- <fieldset> <legend id="Kapı">Kapı  &#127823 &#127822</legend>
+                        <button onclick="Sorgula('Kapı', 'Aç', 10)">Aç</button>
                      </fieldset> -->
             </fieldset>
         </b>
@@ -29,15 +29,65 @@
         padding: 2mm;
         border-width: 1mm;
         font-size: 10mm;
-        }  
+        }
 </style>
 
 <script>
-    async function Sorgula(Sayfa) {
-        const response = await fetch('Komut/' + Sayfa, { method: 'post' });
-        response.text().then(function (text) {
-            let dcm = document.getElementById('HataMesajı');
-            dcm.innerText = text;
+	<!-- ?=? Zamanlama ?=? -->
+    <!-- const Zamanlama = [ ["Kapı", new Date("2023.05.18 02:01:00")], ["Pencere", new Date("2023.05.17 02:02:00")] ]; -->
+    var Zamanlayıcı = null;
+    function Zamanlayıcı_Başlat()
+    {
+        if (Zamanlayıcı != null) return;
+        let _0 = 0;
+        Zamanlayıcı = setInterval(function () {
+            if (!Guncelle()) {
+                clearInterval(Zamanlayıcı);
+                Zamanlayıcı = null;
+            }
+            _0 = 1000;
+        }, _0);
+    }
+    function Guncelle() {
+        var şimdi = new Date();
+        şimdi.setSeconds(şimdi.getSeconds() - 1);
+        var EnAz1ÇalışanVar = false;
+
+        Zamanlama.forEach(eleman => {
+            var fark = eleman[1] - şimdi;
+            var içerik = eleman[0] + (fark > 1000 ? ' &#127823 ' : ' &#127822 ');
+            if (fark > 1000) {
+                var hours = Math.floor((fark % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                var minutes = Math.floor((fark % (1000 * 60 * 60)) / (1000 * 60));
+                var seconds = Math.floor((fark % (1000 * 60)) / 1000);
+
+                tarihsaat = hours + ":" + minutes + ":" + seconds;
+                while (tarihsaat.length > 1 && (tarihsaat[0] == '0' || tarihsaat[0] == ':')) tarihsaat = tarihsaat.substring(1);
+                içerik += tarihsaat;
+                EnAz1ÇalışanVar = true;
+            }
+            document.getElementById(eleman[0]).innerHTML = içerik;
+        });
+
+        return EnAz1ÇalışanVar;
+    }
+    async function Sorgula(Cihaz, Komut, Gecikme) {
+        const response = await fetch('Komut/' + Cihaz + '/' + Komut, { method: 'post' });
+        response.text().then(function (Cevap) {
+            if (Cevap == "Tamam") {
+                document.getElementById('HataMesajı').innerText = "";
+                Zamanlama.forEach(eleman => {
+                    if (eleman[0] == Cihaz)
+                    {
+                        eleman[1] = new Date();
+                        eleman[1].setSeconds(eleman[1].getSeconds() + Gecikme);
+                        Zamanlayıcı_Başlat();
+                        return;
+                    }
+                });
+            }
+            else document.getElementById('HataMesajı').innerText = Cevap;
         });
     }
+    Zamanlayıcı_Başlat();
 </script>

@@ -15,3 +15,15 @@ Genel amaçlı, web api kullanan cihazlar için http sayfası üzerinden özdevi
             <Cihaz Adı> / Sonoff_BasicR3_DIYMode / <Seri No - Tanımlayıcı> / <Kapatıldıktan sonra tekrar açılabilmesi için gereken süre - sn> 
                 <Komut Adı> / Aç / <Rölenin açık kalma süresi - 1 ile 43600 sn arasında>
                 <Komut Adı> / Kapat
+
+    Tüm Cihazları kontrol edebilmek için anasayfa
+        <Bilgisayar ip>:<Erişim Noktası>
+        http://192.168.2.1:9999
+
+    Bir cihazın bir komutunu doğrudan çağırmak için
+        <Bilgisayar ip>:<Erişim Noktası>/Komut/<Cihaz Adı>/<Komut Adı>
+        http://192.168.2.1:9999/Komut/Kapı/Aç
+
+    Bir cihazın bir komutunu doğrudan çağırıp anasayfayı açmak için
+        <Bilgisayar ip>:<Erişim Noktası>/Komut/<Cihaz Adı>/<Komut Adı>/Anasayfa
+        http://192.168.2.1:9999/Komut/Kapı/Aç/Anasayfa    
