@@ -2,13 +2,11 @@
 using System.Net;
 using System.Threading.Tasks;
 using System;
-using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using ArgeMup.HazirKod.Ekİşlemler;
 using ArgeMup.HazirKod;
 using System.Linq;
 using ArgeMup.HazirKod.ArkaPlan;
-using System.Threading;
 
 namespace Özdevinimci
 {
@@ -29,7 +27,7 @@ namespace Özdevinimci
             Aç,
             Kapat
         };
-        public static readonly int EnBüyükİletişiZamanAşımı = 3500;
+        public static readonly int EnBüyükİletişiZamanAşımı = 5000;
 
         public static string Çalıştır(string Cihaz, string Komut)
         {
@@ -98,21 +96,13 @@ namespace Özdevinimci
                 {
                     byte[] YerelAdres_açıkHali = YerelAdres.GetAddressBytes();
 
-                    Task<PingReply>[] Yankı_Cevapları = new Task<PingReply>[256];
-                    for (int i = 0; i < Yankı_Cevapları.Length; i++)
+                    Task<Sorgula_Detaylar_>[] Sorgu_Cevapları = new Task<Sorgula_Detaylar_>[256];
+                    for (int i = 0; i < Sorgu_Cevapları.Length; i++)
                     {
                         YerelAdres_açıkHali[3] = (byte)i;
-                        Yankı_Cevapları[i] = new Ping().SendPingAsync(new IPAddress(YerelAdres_açıkHali), 1500);
-                    }
-                    await Task.WhenAll(Yankı_Cevapları);
-
-                    List<Task<Sorgula_Detaylar_>> Sorgu_Cevapları = new List<Task<Sorgula_Detaylar_>>();
-                    for (int i = 0; i < Yankı_Cevapları.Length; i++)
-                    {
-                        if (Yankı_Cevapları[i].Result.Status != IPStatus.Success) continue;
 
                         //ilerde tüm cihaz tipleri için ayrı ayrı denenecek
-                        Sorgu_Cevapları.Add(DetaylarınıOku(Yankı_Cevapları[i].Result.Address, Cihaz.Sonoff.ErişimNoktası, Cihaz.Sonoff.Bilgi.Sayfa, Cihaz.Sonoff.Bilgi.Sorgu));
+                        Sorgu_Cevapları[i] = DetaylarınıOku(new IPAddress(YerelAdres_açıkHali), Cihaz.Sonoff.Bilgi.Sayfa, Cihaz.Sonoff.Bilgi.Sorgu);
                     }
                     await Task.WhenAll(Sorgu_Cevapları);
 
@@ -160,12 +150,15 @@ namespace Özdevinimci
             public BirCihaz_ Cihaz;
             public string Hata;
         }
-        public static async Task<Sorgula_Detaylar_> DetaylarınıOku(IPAddress Adres, int ErişimNoktası, string Sayfa, string Sorgu)
+        public static async Task<Sorgula_Detaylar_> DetaylarınıOku(IPAddress Adres, string Sayfa, string Sorgu)
         {
             await Task.Delay(1); //eşzamanlı çalışma için
 
-            Sorgula_Detaylar_ Detaylar = new Sorgula_Detaylar_() { Sayfa = Sayfa };
-            Detaylar.Cihaz = new BirCihaz_() { Adresi = Adres };
+            Sorgula_Detaylar_ Detaylar = new Sorgula_Detaylar_() 
+            { 
+                Sayfa = Sayfa,
+                Cihaz = new BirCihaz_() { Adresi = Adres }
+            };
 
             Detaylar.Hata = Detaylar.Cihaz.Bilgi(0);
             if (Detaylar.Hata.BoşMu())
@@ -313,7 +306,7 @@ namespace Özdevinimci
         string Sorgula(string Sayfa, string Sorgu)
         {
             if (Adresi == null) return null;
-
+            
             Exception son_hata = null;
             for (int i = 0; i < 3; i++)
             {
@@ -323,10 +316,10 @@ namespace Özdevinimci
                     {
                         İstemci.ReceiveTimeout = Cihaz.EnBüyükİletişiZamanAşımı;
                         İstemci.SendTimeout = Cihaz.EnBüyükİletişiZamanAşımı / 2;
-                        if (!İstemci.ConnectAsync(Adresi, Cihaz.Sonoff.ErişimNoktası).Wait(5000))
+                        if (!İstemci.ConnectAsync(Adresi, Cihaz.Sonoff.ErişimNoktası).Wait(Cihaz.EnBüyükİletişiZamanAşımı))
                         {
                             İstemci.Close();
-                            return null;
+                            continue;
                         }
 
                         /*
