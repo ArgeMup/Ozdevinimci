@@ -141,6 +141,7 @@ namespace Özdevinimci
             }).ContinueWith((t) =>
             {
                 Tarama_Bitti = true;
+                Günlük.Ekle("Tarama bitti");
             });
         }
 

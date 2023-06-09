@@ -12,7 +12,7 @@ namespace Özdevinimci
 
         public AnaEkran()
         {
-            Günlük.Başlat(TümDosyaların_KapladığıAlan_bayt: 5 * 1024 * 2014/*5MB*/);
+            Günlük.Başlat(Klasör.Depolama(Klasör.Kapsamı.Geçici, Sürüm:"") + "\\Günlük", TümDosyaların_KapladığıAlan_bayt: 5 * 1024 * 2014/*5MB*/);
 
             InitializeComponent();
 
@@ -89,18 +89,14 @@ namespace Özdevinimci
                     DialogResult Dr = MessageBox.Show("Bilgisayarınız " + Ortak.BilgisayarıKapat.Zamanı.Yazıya() + " zamanı geldiğinde kapatılacak." + Environment.NewLine +
                         "Seçenekleri değerlendiriniz." + Environment.NewLine + Environment.NewLine +
                         "Evet : 1 saat ertele" + Environment.NewLine +
-                        "Hayır : 5 dakika içinde kapansın" + Environment.NewLine +
-                        "İptal : Bilgisayarı kapatmayı iptal et", "Bilgisayar Kapatılacak", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
+                        "Hayır : 5 dakika içinde kapansın",
+                        "Bilgisayar Kapatılacak", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
                     if (Dr == DialogResult.Yes)
                     {
                         Ortak.BilgisayarıKapat.Zamanı = DateTime.Now.AddHours(1);
                         Ortak.BilgisayarıKapat.Kapat(0);
                         Ortak.BilgisayarıKapat.Kapat(60 * 60); //1 saat
                         return 60000;
-                    }
-                    else if (Dr == DialogResult.Cancel)
-                    {
-                        Ortak.BilgisayarıKapat.Kapat(0);
                     }
                     return -1;
 
