@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using System.Net;
-using System.Windows.Forms;
 using ArgeMup.HazirKod;
 using ArgeMup.HazirKod.ArkaPlan;
 using ArgeMup.HazirKod.Ekİşlemler;
@@ -29,7 +28,12 @@ namespace Özdevinimci
                     process.StartInfo.Arguments = Saniye > 0 ? "-s -t " + Saniye : "-a";
                     process.StartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
                     process.Start();
+
+                    process.WaitForExit(15000);
+                    System.Threading.Thread.Sleep(1500);
                 #endif
+
+                Günlük.Ekle("BilgisayarıKapat " + Saniye);
             }
         }
         public static class Cihazlar
